@@ -30,6 +30,7 @@ export async function authGuard(
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    console.warn(`[authGuard] 401 — missing or malformed Authorization header (${req.method} ${req.path})`);
     res.status(401).json({ error: 'Unauthorized' });
     return;
   }
@@ -55,7 +56,8 @@ export async function authGuard(
     };
 
     next();
-  } catch {
+  } catch (err) {
+    console.warn(`[authGuard] 401 — JWT verification failed (${req.method} ${req.path}):`, err instanceof Error ? err.message : err);
     res.status(401).json({ error: 'Unauthorized' });
   }
 }

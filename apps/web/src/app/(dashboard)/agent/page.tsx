@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState, useRef, type FormEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
@@ -21,13 +21,18 @@ export default function AgentPage() {
   const articleId = searchParams.get('articleId');
   const [inputValue, setInputValue] = useState('');
 
+  // Keep a ref so the headers function always reads the latest session,
+  // even though useChat captures the transport object only on mount.
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
+
   const apiUrl = `${process.env.NEXT_PUBLIC_API_URL ?? ''}/agent/chat`;
 
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({
       api: apiUrl,
       headers: (): Record<string, string> => {
-        const token = session?.user?.accessToken;
+        const token = sessionRef.current?.user?.accessToken;
         return token ? { Authorization: `Bearer ${token}` } : {};
       },
     }),

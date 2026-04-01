@@ -3,7 +3,6 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev": "serverless offline start --stage local",
     "deploy": "serverless deploy",
     "remove": "serverless remove",
     "build": "tsc -p tsconfig.json"

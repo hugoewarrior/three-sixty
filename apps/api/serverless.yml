@@ -12,7 +12,7 @@ provider:
   runtime: nodejs20.x
   region: ${env:APP_REGION, 'us-east-1'}
   memorySize: 512
-  timeout: 29
+  timeout: 29  # API Gateway hard limit — keep at 29 for deploy
   environment:
     SUPABASE_URL: ${env:SUPABASE_URL}
     SUPABASE_SERVICE_ROLE_KEY: ${env:SUPABASE_SERVICE_ROLE_KEY}
@@ -99,6 +99,7 @@ custom:
   serverless-offline:
     httpPort: 4000
     noPrependStageInUrl: true
+    lambdaTimeout: 300
 
 resources:
   Resources:

@@ -59,3 +59,4 @@ apps/web/.env.*.local
 
 # Serverless 
 /apps/api/.serverless
+/apps/api/.esbuild

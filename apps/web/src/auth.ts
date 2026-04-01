@@ -144,28 +144,42 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
 
     async jwt({ token, user, account, trigger }) {
-      // First sign-in — persist provider and tokens from the OAuth response
+      // First sign-in — exchange the OAuth token for an internal API JWT
       if (trigger === 'signIn' && account) {
-        // TODO: call POST /auth/oauth-sync to register or look up the user on
-        // the backend and exchange for an internal accessToken. Example:
-        //
-        // const res = await fetch(`${API_URL}/auth/oauth-sync`, {
-        //   method: 'POST',
-        //   headers: { 'Content-Type': 'application/json' },
-        //   body: JSON.stringify({
-        //     email: token.email,
-        //     provider: account.provider,
-        //     providerAccountId: account.providerAccountId,
-        //     name: token.name,
-        //     idToken: account.id_token,
-        //   }),
-        // });
-        // if (res.ok) {
-        //   const data = await res.json();
-        //   return { ...token, userId: data.userId, accessToken: data.accessToken,
-        //            provider: account.provider, accessTokenExpiresAt: ... };
-        // }
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
+        try {
+          const res = await fetch(`${apiUrl}/auth/oauth-sync`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: token.email,
+              name: token.name,
+              provider: account.provider,
+              providerAccountId: account.providerAccountId,
+            }),
+          });
+
+          if (res.ok) {
+            const data = (await res.json()) as {
+              accessToken: string;
+              userId: string;
+              expiresIn: number;
+            };
+            return {
+              ...token,
+              userId: data.userId,
+              accessToken: data.accessToken,
+              refreshToken: account.refresh_token ?? '',
+              provider: account.provider,
+              accessTokenExpiresAt: Math.floor(Date.now() / 1000) + data.expiresIn,
+            };
+          }
+        } catch {
+          // If the API is unreachable (e.g. local dev without backend), fall through
+        }
+
+        // Fallback: store the raw OAuth token (works only if authGuard accepts it)
         return {
           ...token,
           userId: user?.id ?? token.sub ?? '',
