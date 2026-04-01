@@ -67,10 +67,11 @@ export const webSearchTool = tool({
     const params = new URLSearchParams({
       q: searchQuery,
       count: '10',
-      country: 'PA',
+      country: 'ALL',
       search_lang: 'es',
     });
 
+    console.log("[webSearchTool]: Calling Brave with: ", params.toString())
     const response = await fetch(
       `https://api.search.brave.com/res/v1/web/search?${params.toString()}`,
       {
