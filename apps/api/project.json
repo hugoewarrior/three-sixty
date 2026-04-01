@@ -21,6 +21,13 @@
     "dev": {
       "executor": "nx:run-commands",
       "options": {
+        "command": "tsx watch --env-file=.env.local src/main.ts",
+        "cwd": "apps/api"
+      }
+    },
+    "dev:lambda": {
+      "executor": "nx:run-commands",
+      "options": {
         "command": "SLS_TELEMETRY_DISABLED=1 serverless offline start --stage local",
         "cwd": "apps/api"
       }

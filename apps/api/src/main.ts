@@ -43,7 +43,10 @@ app.get('/health', (_req, res) => {
 
 const PORT = process.env.PORT ?? 4000;
 
-if (require.main === module) {
+// Start the Express server when running directly with tsx (local dev).
+// AWS_LAMBDA_FUNCTION_NAME is set by both real Lambda and serverless-offline,
+// so its absence means we are in a direct-run context.
+if (!process.env.AWS_LAMBDA_FUNCTION_NAME) {
   app.listen(PORT, () => {
     console.log(`[api] Local dev server running at http://localhost:${PORT}`);
   });

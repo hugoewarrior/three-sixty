@@ -56,11 +56,11 @@ export const chat = [
         messages: coreMessages,
         tools: agentTools,
         stopWhen: stepCountIs(5),
-        onChunk: ({ chunk }) => {
+/*         onChunk: ({ chunk }) => {
           if (chunk.type === 'text-delta') {
             process.stdout.write('.');
           }
-        },
+        }, */
         onError: (e) => {
           console.error(`[agent/chat][${reqId}] error: ${JSON.stringify(e)}`);
         },

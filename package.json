@@ -5,6 +5,7 @@
   "scripts": {
     "web:dev": "nx dev web",
     "api:dev": "nx run api:dev",
+    "api:dev:lambda": "nx run api:dev:lambda",
     "api:deploy": "nx run api:deploy",
     "db:migrate": "npx supabase db push",
     "db:reset": "npx supabase db reset"
