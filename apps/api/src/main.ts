@@ -30,6 +30,7 @@ app.get('/news/today', ...today);
 app.get('/news/:id', ...article);
 
 // Agent routes (protected)
+// /agent/chat uses the Express handler locally; production routes to the Lambda Function URL (agent-stream.ts)
 app.post('/agent/chat', ...chat);
 app.post('/agent/audio', ...audio);
 

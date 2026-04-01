@@ -26,7 +26,12 @@ export default function AgentPage() {
   const sessionRef = useRef(session);
   sessionRef.current = session;
 
-  const apiUrl = `${process.env.NEXT_PUBLIC_API_URL ?? ''}/agent/chat`;
+  // In production, use the Lambda Function URL for true response streaming.
+  // NEXT_PUBLIC_AGENT_STREAM_URL is the Function URL output from `serverless deploy`.
+  // Locally, fall back to the Express API which streams natively via SSE.
+  const apiUrl =
+    process.env.NEXT_PUBLIC_AGENT_STREAM_URL ??
+    `${process.env.NEXT_PUBLIC_API_URL ?? ''}/agent/chat`;
 
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({
@@ -35,6 +40,7 @@ export default function AgentPage() {
         const token = sessionRef.current?.user?.accessToken;
         return token ? { Authorization: `Bearer ${token}` } : {};
       },
+      body: articleId ? { articleId } : {},
     }),
     messages:
       articleId && session

@@ -84,6 +84,22 @@ functions:
               - Authorization
             allowCredentials: true
 
+  agentChatStream:
+    handler: src/handlers/agent-stream.streamHandler
+    timeout: 300
+    memorySize: 1024
+    url:
+      invokeMode: RESPONSE_STREAM
+      cors:
+        allowedOrigins:
+          - ${env:FRONTEND_URL, 'http://localhost:3000'}
+        allowedHeaders:
+          - content-type
+          - authorization
+        allowedMethods:
+          - POST
+          - OPTIONS
+
 custom:
   esbuild:
     bundle: true
