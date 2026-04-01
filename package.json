@@ -3,20 +3,37 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "dev": "nx dev web"
+    "web:dev": "nx dev web",
+    "api:dev": "nx run api:dev",
+    "api:deploy": "nx run api:deploy",
+    "db:migrate": "npx supabase db push",
+    "db:reset": "npx supabase db reset"
   },
   "private": true,
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.0",
+    "@ai-sdk/openai": "^3.0.0",
     "@ai-sdk/react": "^3.0.143",
     "@auth/core": "^0.41.0",
     "@aws-amplify/ui-react": "^6.15.2",
+    "@aws-sdk/client-cognito-identity-provider": "^3.0.0",
+    "@aws-sdk/client-dynamodb": "^3.0.0",
+    "@aws-sdk/client-polly": "^3.0.0",
+    "@aws-sdk/client-s3": "^3.0.0",
+    "@aws-sdk/lib-dynamodb": "^3.0.0",
+    "@aws-sdk/s3-request-presigner": "^3.0.0",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@supabase/supabase-js": "^2.0.0",
     "@tailwindcss/postcss": "^4.2.2",
     "ai": "^6.0.141",
     "aws-amplify": "^6.16.3",
+    "jose": "^5.0.0",
     "next": "~16.1.6",
     "next-auth": "^5.0.0-beta.30",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "serverless-http": "^3.0.0",
+    "zod": "^4.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.8.0",
@@ -61,6 +78,11 @@
     "ts-node": "10.9.1",
     "tslib": "^2.3.0",
     "typescript": "~5.9.2",
-    "typescript-eslint": "^8.40.0"
+    "typescript-eslint": "^8.40.0",
+    "@nx/node": "22.6.3",
+    "serverless": "^3.0.0",
+    "serverless-dotenv-plugin": "^6.0.0",
+    "serverless-offline": "^14.0.0",
+    "serverless-esbuild": "^1.0.0"
   }
 }

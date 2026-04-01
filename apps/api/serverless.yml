@@ -1,0 +1,160 @@
+service: three-sixty-api
+
+frameworkVersion: '3'
+
+plugins:
+  - serverless-esbuild
+  - serverless-offline
+  - serverless-dotenv-plugin
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: ${env:APP_REGION, 'us-east-1'}
+  memorySize: 512
+  timeout: 29
+  environment:
+    SUPABASE_URL: ${env:SUPABASE_URL}
+    SUPABASE_SERVICE_ROLE_KEY: ${env:SUPABASE_SERVICE_ROLE_KEY}
+    COGNITO_USER_POOL_ID: ${env:COGNITO_USER_POOL_ID}
+    COGNITO_CLIENT_ID: ${env:COGNITO_CLIENT_ID}
+    ANTHROPIC_API_KEY: ${env:ANTHROPIC_API_KEY}
+    APP_REGION: ${env:APP_REGION, 'us-east-1'}
+    AUDIO_BUCKET_NAME: ${env:AUDIO_BUCKET_NAME, 'three-sixty-audio'}
+    AI_MODEL: ${env:AI_MODEL, 'claude-sonnet-4-5'}
+    EMBEDDING_MODEL: ${env:EMBEDDING_MODEL, 'text-embedding-3-small'}
+    OPENAI_API_KEY: ${env:OPENAI_API_KEY}
+    BRAVE_SEARCH_API_KEY: ${env:BRAVE_SEARCH_API_KEY}
+    POLLY_VOICE_ID: ${env:POLLY_VOICE_ID, 'Lupe'}
+    AUTH_SECRET: ${env:AUTH_SECRET}
+    FRONTEND_URL: ${env:FRONTEND_URL, 'http://localhost:3000'}
+    ADMIN_EMAIL: ${env:ADMIN_EMAIL}
+    DYNAMODB_USERS_TABLE: panama-news-users
+    DYNAMODB_AUDIO_CACHE_TABLE: panama-news-audio-cache
+
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - cognito-idp:AdminGetUser
+            - cognito-idp:AdminCreateUser
+            - cognito-idp:AdminSetUserPassword
+          Resource: arn:aws:cognito-idp:${env:APP_REGION, 'us-east-1'}:*:userpool/${env:COGNITO_USER_POOL_ID}
+        - Effect: Allow
+          Action:
+            - polly:SynthesizeSpeech
+          Resource: '*'
+        - Effect: Allow
+          Action:
+            - s3:PutObject
+            - s3:GetObject
+          Resource: arn:aws:s3:::${env:AUDIO_BUCKET_NAME, 'three-sixty-audio'}/*
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:Query
+          Resource:
+            - arn:aws:dynamodb:${env:APP_REGION, 'us-east-1'}:*:table/panama-news-users
+            - arn:aws:dynamodb:${env:APP_REGION, 'us-east-1'}:*:table/panama-news-users/index/email-index
+            - arn:aws:dynamodb:${env:APP_REGION, 'us-east-1'}:*:table/panama-news-audio-cache
+
+functions:
+  api:
+    handler: src/main.handler
+    events:
+      - http:
+          path: /
+          method: any
+          cors:
+            origin: ${env:FRONTEND_URL, 'http://localhost:3000'}
+            headers:
+              - Content-Type
+              - Authorization
+            allowCredentials: true
+      - http:
+          path: /{proxy+}
+          method: any
+          cors:
+            origin: ${env:FRONTEND_URL, 'http://localhost:3000'}
+            headers:
+              - Content-Type
+              - Authorization
+            allowCredentials: true
+
+custom:
+  esbuild:
+    bundle: true
+    minify: false
+    sourcemap: true
+    target: node20
+    platform: node
+    tsconfig: './tsconfig.json'
+    external:
+      - '@aws-sdk/*'
+    alias:
+      '@panama-news/shared-types': '../../libs/shared-types/src/index'
+  serverless-offline:
+    httpPort: 4000
+    noPrependStageInUrl: true
+
+resources:
+  Resources:
+
+    # ── S3: Audio bucket ──────────────────────────────────────────────────────
+    AudioBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${env:AUDIO_BUCKET_NAME, 'panama-news-audio-prod'}
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: true
+          BlockPublicPolicy: true
+          IgnorePublicAcls: true
+          RestrictPublicBuckets: true
+        CorsConfiguration:
+          CorsRules:
+            - AllowedMethods: [GET]
+              AllowedOrigins:
+                - ${env:FRONTEND_URL, 'http://localhost:3000'}
+              AllowedHeaders: ['*']
+              MaxAge: 3000
+
+    # ── DynamoDB: Users table ─────────────────────────────────────────────────
+    UsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: panama-news-users
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: userId
+            AttributeType: S
+          - AttributeName: email
+            AttributeType: S
+        KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: email-index
+            KeySchema:
+              - AttributeName: email
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+
+    # ── DynamoDB: Audio cache table ───────────────────────────────────────────
+    AudioCacheTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: panama-news-audio-cache
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: articleId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: articleId
+            KeyType: HASH
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
