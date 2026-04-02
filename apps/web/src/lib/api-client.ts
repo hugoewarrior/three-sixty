@@ -1,20 +1,6 @@
-import { getServerSession } from '@/lib/get-session';
-import { signOut } from 'next-auth/react';
-
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? '';
 
-async function getToken(): Promise<string | null> {
-  try {
-    const session = await getServerSession();
-    return session?.user?.accessToken ?? null;
-  } catch {
-    return null;
-  }
-}
-
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const token = await getToken();
-
+async function request<T>(path: string, token: string | null, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set('Content-Type', 'application/json');
   if (token) {
@@ -22,13 +8,6 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
 
   const response = await fetch(`${BASE_URL}${path}`, { ...init, headers });
-
-  if (response.status === 401) {
-    if (typeof window !== 'undefined') {
-      void signOut({ callbackUrl: '/login' });
-    }
-    throw new Error('Session expired. Please sign in again.');
-  }
 
   if (!response.ok) {
     throw new Error(`Request failed: ${response.status} ${response.statusText}`);
@@ -69,13 +48,11 @@ export interface ArticlesResponse {
 
 export const apiClient = {
   news: {
-    getToday: async (): Promise<ArticlesResponse> => {
-      // Backend returns Article[] directly; wrap it with a client-side timestamp.
-      const articles = await request<Article[]>('/news/today');
+    getToday: async (token: string | null): Promise<ArticlesResponse> => {
+      const articles = await request<Article[]>('/news/today', token);
       return { articles, updatedAt: new Date().toISOString() };
     },
-    getArticle: (id: string) => request<Article>(`/news/${id}`),
+    getArticle: (id: string, token: string | null) =>
+      request<Article>(`/news/${id}`, token),
   },
 };
-
-export { request };

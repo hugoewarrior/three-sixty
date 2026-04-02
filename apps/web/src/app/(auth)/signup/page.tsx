@@ -30,49 +30,43 @@ export default function SignupPage() {
     setStep('loading');
 
     // TODO: replace with real API call — POST /auth/request-access
-    // await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/request-access`, {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ name, email, reason }),
-    // });
-
     await new Promise((resolve) => setTimeout(resolve, 1500));
     setStep('success');
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-100 to-blue-50 px-4 py-12">
+    <div className="flex min-h-screen items-center justify-center bg-gray-950 px-4 py-12">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="mb-8 text-center">
-          <span className="text-4xl font-black text-blue-700">360</span>
+          <span className="text-4xl font-black text-blue-400">360</span>
           <p className="mt-1 text-sm text-gray-500">Three Sixty AI</p>
         </div>
 
-        <div className="rounded-2xl bg-white p-8 shadow-sm ring-1 ring-gray-200">
+        <div className="rounded-2xl bg-gray-900 p-8 ring-1 ring-gray-800">
           {step === 'success' ? (
             <div className="text-center space-y-4">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
-                <svg className="h-7 w-7 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-950 ring-1 ring-green-800">
+                <svg className="h-7 w-7 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h2 className="text-xl font-bold text-gray-900">Solicitud enviada</h2>
-              <p className="text-sm text-gray-600">
+              <h2 className="text-xl font-bold text-gray-100">Solicitud enviada</h2>
+              <p className="text-sm text-gray-400">
                 Hemos recibido tu solicitud. Te contactaremos a{' '}
-                <strong className="text-gray-900">{email}</strong> cuando tu acceso esté listo.
+                <strong className="text-gray-200">{email}</strong> cuando tu acceso esté listo.
               </p>
               <Link
                 href="/login"
-                className="mt-4 inline-block text-sm font-medium text-blue-600 hover:underline"
+                className="mt-4 inline-block text-sm font-medium text-blue-400 hover:underline"
               >
                 Volver al inicio de sesión
               </Link>
             </div>
           ) : (
             <>
-              <h1 className="mb-2 text-2xl font-bold text-gray-900">Solicitar acceso</h1>
-              <p className="mb-6 text-sm text-gray-500">
+              <h1 className="mb-2 text-2xl font-bold text-gray-100">Solicitar acceso</h1>
+              <p className="mb-6 text-sm text-gray-400">
                 Three Sixty AI es una plataforma privada. Completa el formulario y te avisaremos cuando tu acceso esté listo.
               </p>
 
@@ -80,7 +74,7 @@ export default function SignupPage() {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                  <label className="mb-1 block text-sm font-medium text-gray-300">
                     Nombre completo
                   </label>
                   <input
@@ -90,12 +84,12 @@ export default function SignupPage() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Tu nombre"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                  <label className="mb-1 block text-sm font-medium text-gray-300">
                     Correo electrónico
                   </label>
                   <input
@@ -104,12 +98,12 @@ export default function SignupPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="tu@correo.com"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
+                  <label className="mb-1 block text-sm font-medium text-gray-300">
                     ¿Por qué quieres acceso?
                   </label>
                   <textarea
@@ -119,9 +113,9 @@ export default function SignupPage() {
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
                     placeholder="Cuéntanos brevemente para qué usarías la plataforma…"
-                    className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="w-full resize-none rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
-                  <p className="mt-1 text-xs text-gray-400">
+                  <p className="mt-1 text-xs text-gray-500">
                     {reason.length}/20 caracteres mínimos
                   </p>
                 </div>
@@ -137,7 +131,7 @@ export default function SignupPage() {
 
               <p className="mt-4 text-center text-sm text-gray-500">
                 ¿Ya tienes acceso?{' '}
-                <Link href="/login" className="font-medium text-blue-600 hover:underline">
+                <Link href="/login" className="font-medium text-blue-400 hover:underline">
                   Inicia sesión
                 </Link>
               </p>

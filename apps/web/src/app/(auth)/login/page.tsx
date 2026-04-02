@@ -46,15 +46,15 @@ export default function LoginPage() {
       </div>
 
       {/* Right panel */}
-      <div className="flex w-full lg:w-1/2 flex-col items-center justify-center px-6 py-12 sm:px-12">
+      <div className="flex w-full lg:w-1/2 flex-col items-center justify-center bg-gray-950 px-6 py-12 sm:px-12">
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="mb-8 text-center lg:hidden">
-            <span className="text-4xl font-black text-blue-700">360</span>
+            <span className="text-4xl font-black text-blue-400">360</span>
             <p className="mt-1 text-sm text-gray-500">Three Sixty AI</p>
           </div>
 
-          <h2 className="mb-2 text-2xl font-bold text-gray-900">Iniciar sesión</h2>
+          <h2 className="mb-2 text-2xl font-black text-gray-100">Iniciar sesión</h2>
           <p className="mb-6 text-sm text-gray-500">
             Selecciona cómo quieres acceder a tu cuenta
           </p>
@@ -77,16 +77,16 @@ export default function LoginPage() {
             </button>
 
             <div className="flex items-center gap-3">
-              <div className="flex-1 border-t border-gray-200" />
-              <span className="text-xs text-gray-400">o continúa con</span>
-              <div className="flex-1 border-t border-gray-200" />
+              <div className="flex-1 border-t border-gray-800" />
+              <span className="text-xs text-gray-500">o continúa con</span>
+              <div className="flex-1 border-t border-gray-800" />
             </div>
 
             {/* Google */}
             <button
               onClick={() => handleSignIn('google')}
               disabled={!!loading}
-              className="flex w-full items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-60"
+              className="flex w-full items-center justify-center gap-3 rounded-lg border border-gray-700 bg-gray-900 px-4 py-2.5 text-sm font-medium text-gray-200 transition hover:bg-gray-800 disabled:opacity-60"
             >
               <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -112,7 +112,7 @@ export default function LoginPage() {
 
           <p className="mt-8 text-center text-sm text-gray-500">
             ¿No tienes acceso?{' '}
-            <Link href="/signup" className="font-medium text-blue-600 hover:underline">
+            <Link href="/signup" className="font-medium text-blue-400 hover:underline">
               Solicita acceso
             </Link>
           </p>
