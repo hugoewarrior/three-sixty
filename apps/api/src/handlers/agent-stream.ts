@@ -10,11 +10,13 @@
 import { streamText, stepCountIs, convertToModelMessages } from 'ai';
 import type { UIMessage } from 'ai';
 import type { ServerResponse } from 'http';
+import { randomUUID } from 'crypto';
 import { model } from '../lib/ai-client';
 import { buildSystemPrompt } from '../agent/prompts/system';
 import { agentTools } from '../agent';
 import { getArticleById } from '../services/supabase';
 import { verifyCognitoToken } from '../lib/jwks';
+import { createConversation, updateConversation } from '../services/conversations';
 
 // awslambda is injected globally by the Lambda Node.js runtime.
 // Not available locally — this file is only bundled/invoked in production Lambda.
@@ -44,6 +46,7 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Origin': process.env.FRONTEND_URL ?? '*',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Expose-Headers': 'X-Conversation-Id',
 };
 
 function sendError(responseStream: LambdaStream, status: number, message: string): void {
@@ -94,14 +97,17 @@ export const streamHandler = awslambda.streamifyResponse(
     // ── Parse body ──────────────────────────────────────────────────────────
     let messages: UIMessage[];
     let articleId: string | undefined;
+    let conversationId: string | undefined;
 
     try {
       const body = JSON.parse(event.body ?? '{}') as {
         messages?: UIMessage[];
         articleId?: string;
+        conversationId?: string;
       };
       messages = body.messages ?? [];
       articleId = body.articleId;
+      conversationId = body.conversationId;
     } catch {
       sendError(responseStream, 400, 'Invalid JSON body');
       return;
@@ -112,7 +118,12 @@ export const streamHandler = awslambda.streamifyResponse(
       return;
     }
 
-    console.log(`[stream][${reqId}] START user=${userEmail} userId=${userId} messages=${messages.length} articleId=${articleId ?? 'none'}`);
+    console.log(`[stream][${reqId}] START user=${userEmail} messages=${messages.length} articleId=${articleId ?? 'none'} conversationId=${conversationId ?? 'new'}`);
+
+    // ── Pre-generate conversationId so it can be sent in response headers ───
+    // Lambda streaming requires all headers to be set before the first byte is
+    // written, so we generate the ID here and create/update the record in onFinish.
+    const outgoingConversationId = conversationId ?? randomUUID();
 
     // ── Open the streaming HTTP response ────────────────────────────────────
     const httpStream = awslambda.HttpResponseStream.from(responseStream, {
@@ -120,6 +131,7 @@ export const streamHandler = awslambda.streamifyResponse(
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
         'x-vercel-ai-data-stream': 'v1',
+        'X-Conversation-Id': outgoingConversationId,
         ...CORS_HEADERS,
       },
     });
@@ -144,10 +156,30 @@ export const streamHandler = awslambda.streamifyResponse(
         messages: coreMessages,
         tools: agentTools,
         stopWhen: stepCountIs(5),
-        onFinish: ({ usage, steps }) => {
+        onError: (e) => console.error(`[stream][${reqId}] stream error:`, e),
+        onFinish: async ({ text, steps, usage }) => {
           console.log(
             `[stream][${reqId}] DONE steps=${steps.length} tokens_in=${usage.inputTokens} tokens_out=${usage.totalTokens}`
           );
+          // TODO: migrate to event-driven pattern (e.g. EventBridge) so conversation
+          // persistence does not add latency to the streaming response pipeline.
+          try {
+            const assistantMsg: UIMessage = {
+              id: randomUUID(),
+              role: 'assistant',
+              parts: [{ type: 'text', text }],
+            };
+            const fullMessages = [...messages, assistantMsg];
+
+            if (conversationId) {
+              await updateConversation(conversationId, userId, fullMessages);
+            } else {
+              await createConversation(userId, userEmail, fullMessages, outgoingConversationId);
+            }
+            console.log(`[stream][${reqId}] conversation saved conversationId=${outgoingConversationId}`);
+          } catch (err) {
+            console.error(`[stream][${reqId}] conversation save error`, err);
+          }
         },
       });
 

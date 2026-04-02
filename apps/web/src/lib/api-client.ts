@@ -44,6 +44,31 @@ export interface ArticlesResponse {
   updatedAt: string;
 }
 
+// ── Conversation types ─────────────────────────────────────────────────────
+
+export interface ConversationSummary {
+  conversationId: string;
+  firstMessage: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ConversationHistoryResponse {
+  items: ConversationSummary[];
+  nextKey: string | null;
+}
+
+export interface ConversationDetail {
+  conversationId: string;
+  userId: string;
+  userEmail: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  messages: any[]; // UIMessage[] — typed as any to avoid importing 'ai' in this file
+  firstMessage: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ── API client ─────────────────────────────────────────────────────────────────
 
 export const apiClient = {
@@ -54,5 +79,13 @@ export const apiClient = {
     },
     getArticle: (id: string, token: string | null) =>
       request<Article>(`/news/${id}`, token),
+  },
+  conversations: {
+    getHistory: (token: string | null, lastKey?: string): Promise<ConversationHistoryResponse> => {
+      const qs = lastKey ? `?lastKey=${encodeURIComponent(lastKey)}` : '';
+      return request<ConversationHistoryResponse>(`/agent/conversation/history${qs}`, token);
+    },
+    getDetail: (conversationId: string, token: string | null): Promise<ConversationDetail> =>
+      request<ConversationDetail>(`/agent/conversation/${conversationId}`, token),
   },
 };

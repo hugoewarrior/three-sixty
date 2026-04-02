@@ -10,6 +10,7 @@ import { corsMiddleware } from './middleware/cors';
 import { login } from './handlers/auth';
 import { today, article } from './handlers/news';
 import { chat, audio } from './handlers/agent';
+import { history, conversationDetail } from './handlers/conversation';
 import { handler as mcpHandler } from './handlers/mcp';
 
 const app = express();
@@ -28,6 +29,9 @@ app.get('/news/:id', ...article);
 // /agent/chat uses the Express handler locally; production routes to the Lambda Function URL (agent-stream.ts)
 app.post('/agent/chat', ...chat);
 app.post('/agent/audio', ...audio);
+// Conversation history — static route MUST come before the :conversationId param route
+app.get('/agent/conversation/history', ...history);
+app.get('/agent/conversation/:conversationId', ...conversationDetail);
 
 // MCP route (protected)
 app.post('/mcp', ...mcpHandler);

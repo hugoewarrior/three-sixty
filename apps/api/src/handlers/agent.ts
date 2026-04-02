@@ -2,12 +2,14 @@ import { Request, Response } from 'express';
 import { streamText, stepCountIs, convertToModelMessages } from 'ai';
 import type { UIMessage } from 'ai';
 import type { ServerResponse } from 'http';
+import { randomUUID } from 'crypto';
 import { model } from '../lib/ai-client';
 import { buildSystemPrompt } from '../agent/prompts/system';
 import { agentTools } from '../agent';
 import { getArticleById } from '../services/supabase';
 import { synthesizeSpeech } from '../services/tts';
 import { authGuard } from '../middleware/auth-guard';
+import { createConversation, updateConversation } from '../services/conversations';
 
 /**
  * POST /agent/chat  (local Express dev only — production uses agent-stream.ts via Lambda Function URL)
@@ -18,9 +20,10 @@ export const chat = [
   authGuard,
   async (req: Request, res: Response): Promise<void> => {
     const reqId = Math.random().toString(36).slice(2, 8);
-    const { messages, articleId } = req.body as {
+    const { messages, articleId, conversationId } = req.body as {
       messages: UIMessage[];
       articleId?: string;
+      conversationId?: string;
     };
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -28,7 +31,16 @@ export const chat = [
       return;
     }
 
-    console.log(`[agent/chat][${reqId}] START user=${req.user?.email} messages=${messages.length} articleId=${articleId ?? 'none'}`);
+    console.log(`[agent/chat][${reqId}] START user=${req.user?.email} messages=${messages.length} articleId=${articleId ?? 'none'} conversationId=${conversationId ?? 'new'}`);
+
+    // For existing conversations, echo the ID back in the response header so the
+    // frontend can track it. For new conversations in Express/local dev, the header
+    // cannot be set after pipeUIMessageStreamToResponse flushes headers — the
+    // frontend will receive the ID on the first request that includes it in the body.
+    // NOTE: Production uses agent-stream.ts where pre-generation works correctly.
+    if (conversationId) {
+      res.setHeader('X-Conversation-Id', conversationId);
+    }
 
     try {
       const coreMessages = await convertToModelMessages(messages);
@@ -51,8 +63,35 @@ export const chat = [
         tools: agentTools,
         stopWhen: stepCountIs(5),
         onError: (e) => console.error(`[agent/chat][${reqId}] stream error:`, e),
-        onFinish: ({ usage, steps }) => {
+        onFinish: ({ text, usage, steps }) => {
           console.log(`[agent/chat][${reqId}] DONE steps=${steps.length} tokens_in=${usage.inputTokens} tokens_out=${usage.totalTokens}`);
+          // TODO: migrate to event-driven pattern (e.g. EventBridge) so conversation
+          // persistence does not add latency to the streaming response pipeline.
+          void (async () => {
+            try {
+              const assistantMsg: UIMessage = {
+                id: randomUUID(),
+                role: 'assistant',
+                parts: [{ type: 'text', text }],
+                //createdAt: new Date(),
+              };
+              const fullMessages = [...messages, assistantMsg];
+              const userId = req.user!.userId;
+              const userEmail = req.user!.email;
+
+              if (conversationId) {
+                await updateConversation(conversationId, userId, fullMessages);
+              } else {
+                const record = await createConversation(userId, userEmail, fullMessages);
+                console.log(`[agent/chat][${reqId}] new conversation created conversationId=${record.conversationId}`);
+                // The new conversationId cannot be sent as a header here since
+                // headers are already flushed. The Lambda handler (agent-stream.ts)
+                // handles this correctly by pre-generating the ID before streaming.
+              }
+            } catch (err) {
+              console.error(`[agent/chat][${reqId}] conversation save error`, err);
+            }
+          })();
         },
       });
 

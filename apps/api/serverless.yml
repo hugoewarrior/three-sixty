@@ -1,6 +1,6 @@
 service: three-sixty-api
 
-frameworkVersion: '3'
+frameworkVersion: "3"
 
 plugins:
   - serverless-esbuild
@@ -12,7 +12,7 @@ provider:
   runtime: nodejs20.x
   region: ${env:APP_REGION, 'us-east-1'}
   memorySize: 512
-  timeout: 29  # API Gateway hard limit — keep at 29 for deploy
+  timeout: 29 # API Gateway hard limit — keep at 29 for deploy
   environment:
     SUPABASE_URL: ${env:SUPABASE_URL}
     SUPABASE_SERVICE_ROLE_KEY: ${env:SUPABASE_SERVICE_ROLE_KEY}
@@ -30,6 +30,7 @@ provider:
     ADMIN_EMAIL: ${env:ADMIN_EMAIL}
     DYNAMODB_USERS_TABLE: panama-news-users
     DYNAMODB_AUDIO_CACHE_TABLE: panama-news-audio-cache
+    DYNAMODB_CONVERSATIONS_TABLE: panama-news-conversations
 
   iam:
     role:
@@ -43,7 +44,7 @@ provider:
         - Effect: Allow
           Action:
             - polly:SynthesizeSpeech
-          Resource: '*'
+          Resource: "*"
         - Effect: Allow
           Action:
             - s3:PutObject
@@ -59,6 +60,15 @@ provider:
             - arn:aws:dynamodb:${env:APP_REGION, 'us-east-1'}:*:table/panama-news-users
             - arn:aws:dynamodb:${env:APP_REGION, 'us-east-1'}:*:table/panama-news-users/index/email-index
             - arn:aws:dynamodb:${env:APP_REGION, 'us-east-1'}:*:table/panama-news-audio-cache
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:Query
+          Resource:
+            - arn:aws:dynamodb:${env:APP_REGION, 'us-east-1'}:*:table/panama-news-conversations
+            - arn:aws:dynamodb:${env:APP_REGION, 'us-east-1'}:*:table/panama-news-conversations/index/userId-createdAt-index
 
 functions:
   api:
@@ -83,21 +93,21 @@ functions:
               - Authorization
             allowCredentials: true
 
-  agentChatStream:
-    handler: src/handlers/agent-stream.streamHandler
-    timeout: 300
-    memorySize: 1024
-    url:
-      invokeMode: RESPONSE_STREAM
-      cors:
-        allowedOrigins:
-          - ${env:FRONTEND_URL, 'http://localhost:3000'}
-        allowedHeaders:
-          - content-type
-          - authorization
-        allowedMethods:
-          - POST
-          - OPTIONS
+    agentChatStream:
+      handler: src/handlers/agent-stream.streamHandler
+      timeout: 300
+      memorySize: 1024
+      url:
+        invokeMode: RESPONSE_STREAM
+        cors:
+          allowedOrigins:
+            - ${env:FRONTEND_URL, 'http://localhost:3000'}
+          allowedHeaders:
+            - content-type
+            - authorization
+          allowedMethods:
+            - POST
+            - OPTIONS
 
 custom:
   esbuild:
@@ -106,11 +116,11 @@ custom:
     sourcemap: true
     target: node20
     platform: node
-    tsconfig: './tsconfig.json'
+    tsconfig: "./tsconfig.json"
     external:
-      - '@aws-sdk/*'
+      - "@aws-sdk/*"
     alias:
-      '@panama-news/shared-types': '../../libs/shared-types/src/index'
+      "@panama-news/shared-types": "../../libs/shared-types/src/index"
   serverless-offline:
     httpPort: 4000
     noPrependStageInUrl: true
@@ -118,7 +128,6 @@ custom:
 
 resources:
   Resources:
-
     # ── S3: Audio bucket ──────────────────────────────────────────────────────
     AudioBucket:
       Type: AWS::S3::Bucket
@@ -134,7 +143,7 @@ resources:
             - AllowedMethods: [GET]
               AllowedOrigins:
                 - ${env:FRONTEND_URL, 'http://localhost:3000'}
-              AllowedHeaders: ['*']
+              AllowedHeaders: ["*"]
               MaxAge: 3000
 
     # ── DynamoDB: Users table ─────────────────────────────────────────────────
@@ -174,3 +183,29 @@ resources:
         TimeToLiveSpecification:
           AttributeName: ttl
           Enabled: true
+
+    # ── DynamoDB: Conversations table ─────────────────────────────────────────
+    ConversationsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: panama-news-conversations
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: conversationId
+            AttributeType: S
+          - AttributeName: userId
+            AttributeType: S
+          - AttributeName: createdAt
+            AttributeType: S
+        KeySchema:
+          - AttributeName: conversationId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: userId-createdAt-index
+            KeySchema:
+              - AttributeName: userId
+                KeyType: HASH
+              - AttributeName: createdAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 
 const ALLOWED_HEADERS = 'Content-Type, Authorization';
 const ALLOWED_METHODS = 'GET, POST, OPTIONS';
+const EXPOSED_HEADERS = 'X-Conversation-Id';
 
 export function corsMiddleware(
   req: Request,
@@ -30,6 +31,7 @@ export function corsMiddleware(
   res.setHeader('Access-Control-Allow-Headers', ALLOWED_HEADERS);
   res.setHeader('Access-Control-Allow-Methods', ALLOWED_METHODS);
   res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Expose-Headers', EXPOSED_HEADERS);
 
   // Handle preflight
   if (req.method === 'OPTIONS') {

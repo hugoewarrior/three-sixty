@@ -35,7 +35,7 @@
     "deploy": {
       "executor": "nx:run-commands",
       "options": {
-        "command": "serverless deploy",
+        "command": "serverless deploy --verbose",
         "cwd": "apps/api"
       }
     },
