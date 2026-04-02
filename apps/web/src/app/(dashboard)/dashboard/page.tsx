@@ -1,31 +1,37 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { apiClient, type ArticlesResponse } from '@/lib/api-client';
 import { NewsDashboard } from '@/components/news/NewsDashboard';
 import { Spinner } from '@/components/ui/Spinner';
-import { ErrorBanner } from '@/components/ui/ErrorBanner';
+import { Snackbar, useSnackbar } from '@/components/ui/Snackbar';
 
 export default function DashboardPage() {
   const { session, status } = useAuth();
   const [data, setData] = useState<ArticlesResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { snackbar, show, dismiss } = useSnackbar();
 
-  useEffect(() => {
-    if (status === 'loading') return;
-
+  const fetchNews = useCallback(() => {
     const token = session?.user?.accessToken ?? null;
-
+    setLoading(true);
     apiClient.news
       .getToday(token)
       .then(setData)
       .catch((err: unknown) =>
-        setError(err instanceof Error ? err.message : 'Failed to load news')
+        show(err instanceof Error ? err.message : 'Failed to load news', {
+          label: 'Retry',
+          onClick: fetchNews,
+        })
       )
       .finally(() => setLoading(false));
-  }, [status, session?.user?.accessToken]);
+  }, [session?.user?.accessToken, show]);
+
+  useEffect(() => {
+    if (status === 'loading') return;
+    fetchNews();
+  }, [status, fetchNews]);
 
   if (loading || status === 'loading') {
     return (
@@ -35,29 +41,16 @@ export default function DashboardPage() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="mx-auto max-w-xl px-4 py-16">
-        <ErrorBanner
-          message={error}
-          onRetry={() => {
-            setError(null);
-            setLoading(true);
-            const token = session?.user?.accessToken ?? null;
-            apiClient.news
-              .getToday(token)
-              .then(setData)
-              .catch((err: unknown) =>
-                setError(err instanceof Error ? err.message : 'Failed to load news')
-              )
-              .finally(() => setLoading(false));
-          }}
+  return (
+    <>
+      {data && <NewsDashboard data={data} />}
+      {snackbar && (
+        <Snackbar
+          message={snackbar.message}
+          action={snackbar.action}
+          onClose={dismiss}
         />
-      </div>
-    );
-  }
-
-  if (!data) return null;
-
-  return <NewsDashboard data={data} />;
+      )}
+    </>
+  );
 }

@@ -8,6 +8,7 @@ import type { UIMessage } from 'ai';
 import { useAuth } from '@/context/AuthContext';
 import { ChatWindow } from '@/components/agent/ChatWindow';
 import { ChatInput } from '@/components/agent/ChatInput';
+import { Snackbar, useSnackbar } from '@/components/ui/Snackbar';
 
 const SUGGESTED_PROMPTS = [
   'What are the top stories in Panama today?',
@@ -36,6 +37,7 @@ export default function AgentPage() {
   const searchParams = useSearchParams();
   const articleId = searchParams.get('articleId');
   const [inputValue, setInputValue] = useState('');
+  const { snackbar, show, dismiss } = useSnackbar();
 
   const storageKey = `chat_${articleId ?? 'general'}`;
 
@@ -55,6 +57,9 @@ export default function AgentPage() {
       },
       body: articleId ? { articleId } : {},
     }),
+    onError: (error) => {
+      show(error instanceof Error ? error.message : 'Failed to get a response. Please try again.');
+    },
   });
 
   // Load from sessionStorage after mount — runs only on the client, avoiding
@@ -104,6 +109,9 @@ export default function AgentPage() {
 
   return (
     <div className="mx-auto flex h-[calc(100vh-3.5rem)] max-w-3xl flex-col px-4 sm:px-6">
+      {snackbar && (
+        <Snackbar message={snackbar.message} onClose={dismiss} />
+      )}
       <div className="flex-1 overflow-y-auto">
         {showSuggestions ? (
           <div className="flex h-full flex-col items-center justify-center gap-8 py-12">
