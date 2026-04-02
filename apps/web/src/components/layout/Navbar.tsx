@@ -10,13 +10,15 @@ export default function Navbar() {
   const pathname = usePathname();
 
   const isActive = (href: string) =>
-    pathname === href ? 'text-blue-600 font-semibold' : 'text-gray-600 hover:text-gray-900';
+    pathname === href
+      ? 'text-blue-400 font-semibold'
+      : 'text-gray-400 hover:text-gray-100 transition-colors';
 
   return (
-    <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/90 backdrop-blur-sm">
+    <header className="sticky top-0 z-40 border-b border-gray-800 bg-gray-950/90 backdrop-blur-sm">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-6">
-          <Link href="/dashboard" className="flex items-center gap-2 font-bold text-gray-900">
+          <Link href="/dashboard" className="flex items-center gap-2 font-bold text-gray-100">
             <span className="text-xl">360</span>
             <span className="hidden sm:inline text-sm font-medium text-gray-500">Three Sixty News</span>
           </Link>

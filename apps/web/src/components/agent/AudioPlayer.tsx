@@ -41,11 +41,11 @@ export function AudioPlayer({ audioUrl }: { audioUrl: string }) {
   }
 
   return (
-    <div className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2 ring-1 ring-gray-200">
+    <div className="flex items-center gap-2 rounded-xl bg-gray-900 px-3 py-2 ring-1 ring-gray-700">
       <audio ref={audioRef} src={audioUrl} preload="metadata" />
       <button
         onClick={toggle}
-        className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-700"
+        className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors"
         aria-label={playing ? 'Pause audio' : 'Play audio'}
       >
         {playing ? (
@@ -59,14 +59,14 @@ export function AudioPlayer({ audioUrl }: { audioUrl: string }) {
         )}
       </button>
       <div className="flex-1">
-        <div className="h-1.5 overflow-hidden rounded-full bg-gray-200">
+        <div className="h-1.5 overflow-hidden rounded-full bg-gray-700">
           <div
             className="h-full rounded-full bg-blue-600 transition-all"
             style={{ width: `${progress}%` }}
           />
         </div>
       </div>
-      <span className="text-xs text-gray-400">TTS</span>
+      <span className="text-xs text-gray-500">TTS</span>
     </div>
   );
 }

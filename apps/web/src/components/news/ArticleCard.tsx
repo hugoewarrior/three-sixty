@@ -13,7 +13,7 @@ function formatTime(iso: string) {
 
 export function ArticleCard({ article }: { article: Article }) {
   return (
-    <article className="flex flex-col gap-3 rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200 transition hover:shadow-md">
+    <article className="flex flex-col gap-3 rounded-xl bg-gray-900 p-5 ring-1 ring-gray-800 transition hover:ring-gray-700">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           {article.sourceLogo && (
@@ -24,9 +24,9 @@ export function ArticleCard({ article }: { article: Article }) {
               className="h-5 w-5 rounded-full object-cover"
             />
           )}
-          <span className="text-xs font-medium text-gray-500">{article.source}</span>
+          <span className="text-xs font-medium text-gray-400">{article.source}</span>
         </div>
-        <time className="text-xs text-gray-400" dateTime={article.publishedAt}>
+        <time className="text-xs text-gray-500" dateTime={article.publishedAt}>
           {formatTime(article.publishedAt)}
         </time>
       </div>
@@ -35,11 +35,11 @@ export function ArticleCard({ article }: { article: Article }) {
         <Badge variant="blue">{article.category}</Badge>
       )}
 
-      <h2 className="text-sm font-semibold leading-snug text-gray-900 line-clamp-3">
+      <h2 className="text-sm font-semibold leading-snug text-gray-100 line-clamp-3">
         {article.headline}
       </h2>
 
-      <p className="text-xs leading-relaxed text-gray-500 line-clamp-2">
+      <p className="text-xs leading-relaxed text-gray-400 line-clamp-2">
         {article.excerpt}
       </p>
 
@@ -48,7 +48,7 @@ export function ArticleCard({ article }: { article: Article }) {
           href={article.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex-1 text-center text-xs font-medium text-blue-600 hover:underline"
+          className="flex-1 text-center text-xs font-medium text-blue-400 hover:underline"
         >
           Read full article ↗
         </a>

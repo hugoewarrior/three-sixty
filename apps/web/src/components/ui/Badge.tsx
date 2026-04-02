@@ -1,11 +1,11 @@
 type Variant = 'default' | 'blue' | 'green' | 'yellow' | 'red';
 
 const variantClasses: Record<Variant, string> = {
-  default: 'bg-gray-100 text-gray-700',
-  blue: 'bg-blue-100 text-blue-700',
-  green: 'bg-green-100 text-green-700',
-  yellow: 'bg-yellow-100 text-yellow-700',
-  red: 'bg-red-100 text-red-700',
+  default: 'bg-gray-800 text-gray-300',
+  blue: 'bg-blue-950 text-blue-400',
+  green: 'bg-green-950 text-green-400',
+  yellow: 'bg-yellow-950 text-yellow-400',
+  red: 'bg-red-950 text-red-400',
 };
 
 export function Badge({

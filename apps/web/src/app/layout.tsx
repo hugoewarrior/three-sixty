@@ -15,7 +15,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="bg-gray-50 text-gray-900 antialiased">
+      <body className="bg-gray-950 text-gray-100 antialiased">
         <NextAuthProvider>
           <AuthProvider>{children}</AuthProvider>
         </NextAuthProvider>

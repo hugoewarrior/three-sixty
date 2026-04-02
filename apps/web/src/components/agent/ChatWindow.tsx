@@ -26,10 +26,10 @@ export function ChatWindow({ messages, isStreaming }: ChatWindowProps) {
       ))}
       {isStreaming && (
         <div className="flex gap-3">
-          <div className="h-8 w-8 flex-shrink-0 rounded-full bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600">
+          <div className="h-8 w-8 flex-shrink-0 rounded-full bg-gray-700 flex items-center justify-center text-xs font-medium text-gray-400">
             AI
           </div>
-          <div className="flex items-center gap-2 rounded-2xl rounded-tl-sm bg-white px-4 py-3 shadow-sm ring-1 ring-gray-200">
+          <div className="flex items-center gap-2 rounded-2xl rounded-tl-sm bg-gray-800 px-4 py-3 ring-1 ring-gray-700">
             <Spinner size="sm" />
             <span className="text-sm text-gray-400">Thinking…</span>
           </div>

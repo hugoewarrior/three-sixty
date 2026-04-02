@@ -49,14 +49,14 @@ function isAudioUrl(href: string): boolean {
   );
 }
 
-function markdownComponents(audioUrl: string | undefined): Components {
+function markdownComponents(): Components {
   return {
     a({ href, children }) {
       if (href && isAudioUrl(href)) {
         return <AudioPlayer audioUrl={href} />;
       }
       return (
-        <a href={href} target="_blank" rel="noopener noreferrer" className="underline">
+        <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">
           {children}
         </a>
       );
@@ -74,7 +74,7 @@ export function ChatMessage({ message }: { message: UIMessage }) {
     <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
       <div
         className={`h-8 w-8 flex-shrink-0 rounded-full flex items-center justify-center text-xs font-medium ${
-          isUser ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
+          isUser ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-400'
         }`}
       >
         {isUser ? 'You' : 'AI'}
@@ -85,23 +85,20 @@ export function ChatMessage({ message }: { message: UIMessage }) {
           className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
             isUser
               ? 'bg-blue-600 text-white rounded-tr-sm'
-              : 'bg-white text-gray-800 shadow-sm ring-1 ring-gray-200 rounded-tl-sm'
+              : 'bg-gray-800 text-gray-100 ring-1 ring-gray-700 rounded-tl-sm'
           }`}
         >
           {isUser ? (
             text
           ) : (
             <>
-              <div className="prose prose-sm max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0">
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={markdownComponents(audioUrl)}
-                >
+              <div className="prose prose-sm prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-a:text-blue-400">
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents()}>
                   {text}
                 </ReactMarkdown>
               </div>
               {audioUrl && (
-                <div className="mt-3 border-t border-gray-100 pt-3">
+                <div className="mt-3 border-t border-gray-700 pt-3">
                   <AudioPlayer audioUrl={audioUrl} />
                 </div>
               )}
