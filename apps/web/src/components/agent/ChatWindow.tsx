@@ -21,9 +21,13 @@ export function ChatWindow({ messages, isStreaming }: ChatWindowProps) {
 
   return (
     <div className="flex flex-col gap-6 py-6">
-      {messages.map((msg) => (
-        <ChatMessage key={msg.id} message={msg} />
-      ))}
+      {messages.map((msg) => {
+        // Skip empty assistant messages — the "Thinking…" spinner covers this state.
+        if (msg.role === 'assistant' && !msg.parts.some((p) => p.type === 'text' && p.text.length > 0)) {
+          return null;
+        }
+        return <ChatMessage key={msg.id} message={msg} />;
+      })}
       {isStreaming && (
         <div className="flex gap-3">
           <div className="h-8 w-8 flex-shrink-0 rounded-full bg-gray-700 flex items-center justify-center text-xs font-medium text-gray-400">

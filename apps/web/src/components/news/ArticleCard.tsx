@@ -39,7 +39,7 @@ export function ArticleCard({ article }: { article: Article }) {
         >
           Read full article ↗
         </a>
-        <Link href={`/agent?articleId=${article.id}`}>
+        <Link href={`/agent?articleId=${article.id}&articleTitle=${encodeURIComponent(article.title)}`}>
           <Button variant="secondary" size="sm">
             Ask AI
           </Button>

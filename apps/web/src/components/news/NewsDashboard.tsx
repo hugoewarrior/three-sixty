@@ -1,5 +1,6 @@
 import type { Article, ArticlesResponse } from '@/lib/api-client';
 import { ArticleCard } from './ArticleCard';
+import { Spinner } from '@/components/ui/Spinner';
 
 function formatTimestamp(iso: string) {
   return new Intl.DateTimeFormat('en-US', {
@@ -45,16 +46,54 @@ function EmptyState() {
   );
 }
 
-export function NewsDashboard({ data }: { data: ArticlesResponse }) {
+export function NewsDashboard({
+  data,
+  onRefresh,
+  isRefreshing = false,
+}: {
+  data: ArticlesResponse;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
+}) {
   const groups = groupBySource(data.articles);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-100">Today&apos;s Headlines</h1>
-        <p className="text-xs text-gray-500">
-          Last updated: {formatTimestamp(data.updatedAt)}
-        </p>
+        <div className="flex items-center gap-3">
+          <p className="text-xs text-gray-500">
+            Last updated: {formatTimestamp(data.updatedAt)}
+          </p>
+          {onRefresh && (
+            <button
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              aria-label="Refresh news"
+              className="flex items-center gap-1.5 rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-xs text-gray-300 transition hover:border-gray-500 hover:text-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isRefreshing ? (
+                <Spinner size="sm" />
+              ) : (
+                <svg
+                  className="h-3.5 w-3.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+              )}
+              Refresh
+            </button>
+          )}
+        </div>
       </div>
 
       {groups.size === 0 ? (

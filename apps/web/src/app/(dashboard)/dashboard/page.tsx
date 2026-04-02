@@ -11,21 +11,26 @@ export default function DashboardPage() {
   const { session, status } = useAuth();
   const [data, setData] = useState<ArticlesResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const { snackbar, show, dismiss } = useSnackbar();
 
-  const fetchNews = useCallback(() => {
+  const fetchNews = useCallback((isRefresh = false) => {
     const token = session?.user?.accessToken ?? null;
-    setLoading(true);
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
     apiClient.news
       .getToday(token)
       .then(setData)
       .catch((err: unknown) =>
         show(err instanceof Error ? err.message : 'Failed to load news', {
           label: 'Retry',
-          onClick: fetchNews,
+          onClick: () => fetchNews(true),
         })
       )
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setRefreshing(false);
+      });
   }, [session?.user?.accessToken, show]);
 
   useEffect(() => {
@@ -43,7 +48,13 @@ export default function DashboardPage() {
 
   return (
     <>
-      {data && <NewsDashboard data={data} />}
+      {data && (
+        <NewsDashboard
+          data={data}
+          onRefresh={() => fetchNews(true)}
+          isRefreshing={refreshing}
+        />
+      )}
       {snackbar && (
         <Snackbar
           message={snackbar.message}

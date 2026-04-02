@@ -36,8 +36,10 @@ export default function AgentPage() {
   const { session } = useAuth();
   const searchParams = useSearchParams();
   const articleId = searchParams.get('articleId');
+  const articleTitle = searchParams.get('articleTitle');
   const [inputValue, setInputValue] = useState('');
   const { snackbar, show, dismiss } = useSnackbar();
+  const autoSentRef = useRef(false);
 
   const storageKey = `chat_${articleId ?? 'general'}`;
 
@@ -48,7 +50,7 @@ export default function AgentPage() {
     process.env.NEXT_PUBLIC_AGENT_STREAM_URL ??
     `${process.env.NEXT_PUBLIC_API_URL ?? ''}/agent/chat`;
 
-  const { messages, sendMessage, status, setMessages } = useChat({
+  const { messages, sendMessage, stop, status, setMessages } = useChat({
     transport: new DefaultChatTransport({
       api: apiUrl,
       headers: (): Record<string, string> => {
@@ -65,26 +67,19 @@ export default function AgentPage() {
   // Load from sessionStorage after mount — runs only on the client, avoiding
   // the SSR hydration mismatch that breaks useState lazy initializers.
   useEffect(() => {
-    const stored = loadFromSession(storageKey);
-    if (stored.length > 0) {
-      setMessages(stored);
-    } else if (articleId) {
-      setMessages([
-        {
-          id: 'system-init',
-          role: 'system' as const,
-          content: `The user wants to discuss article ID: ${articleId}. Please load and summarize this article.`,
-          parts: [
-            {
-              type: 'text' as const,
-              text: `The user wants to discuss article ID: ${articleId}. Please load and summarize this article.`,
-            },
-          ],
-          createdAt: new Date(),
-        },
-      ]);
+    if (autoSentRef.current) return;
+    autoSentRef.current = true;
+
+    if (articleId) {
+      // Always start fresh when arriving from an article card.
+      sessionStorage.removeItem(storageKey);
+      const label = articleTitle ?? articleId;
+      sendMessage({ text: `Please summarize this article for me: "${label}"` });
+    } else {
+      const stored = loadFromSession(storageKey);
+      if (stored.length > 0) setMessages(stored);
     }
-  // storageKey and articleId are stable for the lifetime of this page visit.
+  // These values are stable for the lifetime of this page visit.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -143,6 +138,7 @@ export default function AgentPage() {
           value={inputValue}
           onChange={setInputValue}
           onSubmit={handleSubmit}
+          onStop={stop}
           isLoading={isStreaming}
         />
         <p className="mt-2 text-center text-xs text-gray-600">
