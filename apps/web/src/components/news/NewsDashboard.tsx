@@ -10,9 +10,10 @@ function formatTimestamp(iso: string) {
 
 function groupBySource(articles: Article[]): Map<string, Article[]> {
   return articles.reduce((map, article) => {
-    const group = map.get(article.source) ?? [];
+    const key = article.source.name;
+    const group = map.get(key) ?? [];
     group.push(article);
-    map.set(article.source, group);
+    map.set(key, group);
     return map;
   }, new Map<string, Article[]>());
 }

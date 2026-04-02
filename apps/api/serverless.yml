@@ -26,7 +26,6 @@ provider:
     OPENAI_API_KEY: ${env:OPENAI_API_KEY}
     BRAVE_SEARCH_API_KEY: ${env:BRAVE_SEARCH_API_KEY}
     POLLY_VOICE_ID: ${env:POLLY_VOICE_ID, 'Lupe'}
-    AUTH_SECRET: ${env:AUTH_SECRET}
     FRONTEND_URL: ${env:FRONTEND_URL, 'http://localhost:3000'}
     ADMIN_EMAIL: ${env:ADMIN_EMAIL}
     DYNAMODB_USERS_TABLE: panama-news-users

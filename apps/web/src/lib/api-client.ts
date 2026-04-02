@@ -24,7 +24,6 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(`${BASE_URL}${path}`, { ...init, headers });
 
   if (response.status === 401) {
-    // On the client, trigger sign-out; on the server this is a no-op
     if (typeof window !== 'undefined') {
       void signOut({ callbackUrl: '/login' });
     }
@@ -38,17 +37,27 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-// ---------- Typed endpoint functions (filled in as backend layers are built) ----------
+// ── Types (aligned with the ArticleSummary / Article shapes from the API) ──────
+
+export interface ArticleSource {
+  name: string;
+  url: string;
+  domain: string;
+}
 
 export interface Article {
   id: string;
-  headline: string;
-  source: string;
-  sourceLogo?: string;
-  publishedAt: string;
+  title: string;
   excerpt: string;
+  source: ArticleSource;
   url: string;
-  category?: string;
+  publishedAt: string;
+  hasAudio: boolean;
+  body?: string;
+  author?: string;
+  imageUrl?: string;
+  audioUrl?: string;
+  tags?: string[];
 }
 
 export interface ArticlesResponse {
@@ -56,9 +65,15 @@ export interface ArticlesResponse {
   updatedAt: string;
 }
 
+// ── API client ─────────────────────────────────────────────────────────────────
+
 export const apiClient = {
   news: {
-    getToday: () => request<ArticlesResponse>('/news/today'),
+    getToday: async (): Promise<ArticlesResponse> => {
+      // Backend returns Article[] directly; wrap it with a client-side timestamp.
+      const articles = await request<Article[]>('/news/today');
+      return { articles, updatedAt: new Date().toISOString() };
+    },
     getArticle: (id: string) => request<Article>(`/news/${id}`),
   },
 };

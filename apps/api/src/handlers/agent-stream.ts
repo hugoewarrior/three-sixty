@@ -9,12 +9,12 @@
 
 import { streamText, stepCountIs, convertToModelMessages } from 'ai';
 import type { UIMessage } from 'ai';
-import { jwtVerify } from 'jose';
 import type { ServerResponse } from 'http';
 import { model } from '../lib/ai-client';
 import { buildSystemPrompt } from '../agent/prompts/system';
 import { agentTools } from '../agent';
 import { getArticleById } from '../services/supabase';
+import { verifyCognitoToken } from '../lib/jwks';
 
 // awslambda is injected globally by the Lambda Node.js runtime.
 // Not available locally — this file is only bundled/invoked in production Lambda.
@@ -38,7 +38,6 @@ interface HttpMetadata {
   headers: Record<string, string>;
 }
 
-// Lambda response stream is a Node.js Writable under the hood
 type LambdaStream = NodeJS.WritableStream;
 
 const CORS_HEADERS = {
@@ -69,7 +68,7 @@ export const streamHandler = awslambda.streamifyResponse(
       return;
     }
 
-    // ── Auth ────────────────────────────────────────────────────────────────
+    // ── Auth (Cognito JWKS) ─────────────────────────────────────────────────
     const headers = event.headers ?? {};
     const authHeader = headers['authorization'] ?? headers['Authorization'] ?? '';
 
@@ -79,21 +78,15 @@ export const streamHandler = awslambda.streamifyResponse(
       return;
     }
 
-    let userEmail = '';
     let userId = '';
+    let userEmail = '';
 
     try {
-      const secret = process.env.AUTH_SECRET;
-      if (!secret) throw new Error('AUTH_SECRET not set');
-      const { payload } = await jwtVerify(
-        authHeader.slice(7),
-        new TextEncoder().encode(secret),
-        { algorithms: ['HS256'] }
-      );
-      userId = (payload['sub'] ?? payload['userId'] ?? '') as string;
-      userEmail = (payload['email'] ?? '') as string;
+      const claims = await verifyCognitoToken(authHeader.slice(7));
+      userId = claims.userId;
+      userEmail = claims.email;
     } catch (err) {
-      console.warn(`[stream][${reqId}] 401 — JWT failed:`, err instanceof Error ? err.message : err);
+      console.warn(`[stream][${reqId}] 401 — JWKS verification failed:`, err instanceof Error ? err.message : err);
       sendError(responseStream, 401, 'Unauthorized');
       return;
     }
@@ -158,12 +151,9 @@ export const streamHandler = awslambda.streamifyResponse(
         },
       });
 
-      // pipeUIMessageStreamToResponse writes to anything with .write() and .end().
-      // The Lambda httpStream satisfies this contract.
       await result.pipeUIMessageStreamToResponse(httpStream as unknown as ServerResponse);
     } catch (error) {
       console.error(`[stream][${reqId}] ERROR`, error);
-      // Headers already sent — write a terminal error marker and close
       httpStream.write('\n');
       httpStream.end();
     }

@@ -11,7 +11,6 @@ declare module 'next-auth' {
     user: {
       id: string;
       accessToken: string;
-      provider: string;
       error?: string;
     } & DefaultSession['user'];
     error?: string;
@@ -23,7 +22,6 @@ declare module 'next-auth/jwt' {
     userId?: string;
     accessToken?: string;
     refreshToken?: string;
-    provider?: string;
     accessTokenExpiresAt?: number;
     error?: string;
   }
@@ -34,17 +32,7 @@ declare module 'next-auth/jwt' {
 // ---------------------------------------------------------------------------
 const TOKEN_REFRESH_BUFFER_SECONDS = 60;
 
-/**
- * Returns the full Cognito logout URL.
- * After clearing the NextAuth session, redirect the browser here so Cognito
- * also invalidates its own SSO session.
- *
- * `logoutUri` must be listed in "Allowed sign-out URLs" in the AWS Console.
- */
 export function getCognitoLogoutUrl(logoutUri: string): string {
-  // Derive logout endpoint from token endpoint:
-  // https://<domain>.auth.<region>.amazoncognito.com/oauth2/token
-  // →  https://<domain>.auth.<region>.amazoncognito.com/logout
   const tokenEndpoint = process.env.AUTH_COGNITO_TOKEN_ENDPOINT ?? '';
   const logoutEndpoint = tokenEndpoint.replace('/oauth2/token', '/logout');
   const clientId = process.env.AUTH_COGNITO_CLIENT_ID ?? '';
@@ -52,8 +40,6 @@ export function getCognitoLogoutUrl(logoutUri: string): string {
 }
 
 async function refreshAccessToken(token: import('next-auth/jwt').JWT) {
-  // Use Cognito's token endpoint directly via the standard OAuth2 refresh flow.
-  // AUTH_COGNITO_TOKEN_ENDPOINT = https://<domain>.auth.<region>.amazoncognito.com/oauth2/token
   const tokenEndpoint = process.env.AUTH_COGNITO_TOKEN_ENDPOINT ?? '';
   const clientId = process.env.AUTH_COGNITO_CLIENT_ID ?? '';
   const clientSecret = process.env.AUTH_COGNITO_CLIENT_SECRET ?? '';
@@ -69,7 +55,6 @@ async function refreshAccessToken(token: import('next-auth/jwt').JWT) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        // Cognito requires Basic auth when the app client has a secret
         ...(clientSecret && {
           Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
         }),
@@ -99,7 +84,6 @@ async function refreshAccessToken(token: import('next-auth/jwt').JWT) {
 // NextAuth config
 // ---------------------------------------------------------------------------
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  // ── Providers ────────────────────────────────────────────────────────────
   providers: [
     Cognito({
       clientId: process.env.AUTH_COGNITO_CLIENT_ID,
@@ -108,6 +92,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       authorization: { params: { scope: 'openid email phone' } },
     }),
 
+    // Google and Facebook are included for NextAuth sign-in UI.
+    // For JWKS validation on the API to work, configure these as federated
+    // identity providers in your Cognito User Pool so that sign-ins through
+    // them produce Cognito-issued access tokens.
     Google({
       clientId: process.env.AUTH_GOOGLE_ID,
       clientSecret: process.env.AUTH_GOOGLE_SECRET,
@@ -116,19 +104,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Facebook({
       clientId: process.env.AUTH_FACEBOOK_ID,
       clientSecret: process.env.AUTH_FACEBOOK_SECRET,
-      authorization: {
-        params: { scope: 'email,public_profile' },
-      },
+      authorization: { params: { scope: 'email,public_profile' } },
     }),
   ],
 
-  // ── Session strategy ─────────────────────────────────────────────────────
   session: {
     strategy: 'jwt',
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 30 * 24 * 60 * 60,
   },
 
-  // ── Custom pages ─────────────────────────────────────────────────────────
   pages: {
     signIn: '/login',
     signOut: '/login',
@@ -136,61 +120,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     newUser: '/signup',
   },
 
-  // ── Callbacks ────────────────────────────────────────────────────────────
   callbacks: {
     async signIn({ account }) {
-      // All providers allowed — user sync handled in jwt callback
       return !!account?.providerAccountId;
     },
 
     async jwt({ token, user, account, trigger }) {
-      // First sign-in — exchange the OAuth token for an internal API JWT
+      // First sign-in — store the provider's access token directly.
+      // For the Cognito provider this is a Cognito-signed JWT (RS256) verifiable
+      // via JWKS. Google/Facebook tokens work the same way when those providers
+      // are configured as Cognito federated identity providers.
       if (trigger === 'signIn' && account) {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
-
-        try {
-          const res = await fetch(`${apiUrl}/auth/oauth-sync`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: token.email,
-              name: token.name,
-              provider: account.provider,
-              providerAccountId: account.providerAccountId,
-            }),
-          });
-
-          if (res.ok) {
-            const data = (await res.json()) as {
-              accessToken: string;
-              userId: string;
-              expiresIn: number;
-            };
-            return {
-              ...token,
-              userId: data.userId,
-              accessToken: data.accessToken,
-              refreshToken: account.refresh_token ?? '',
-              provider: account.provider,
-              accessTokenExpiresAt: Math.floor(Date.now() / 1000) + data.expiresIn,
-            };
-          }
-        } catch {
-          // If the API is unreachable (e.g. local dev without backend), fall through
-        }
-
-        // Fallback: store the raw OAuth token (works only if authGuard accepts it)
         return {
           ...token,
-          userId: user?.id ?? token.sub ?? '',
+          userId: token.sub ?? user?.id ?? '',
           accessToken: account.access_token ?? '',
           refreshToken: account.refresh_token ?? '',
-          provider: account.provider,
           accessTokenExpiresAt: account.expires_at ?? Math.floor(Date.now() / 1000) + 3600,
         };
       }
 
-      // Subsequent calls — refresh if token is near expiry
+      // Subsequent calls — refresh via Cognito's token endpoint if near expiry
       if (
         token.accessToken &&
         token.accessTokenExpiresAt &&
@@ -209,7 +159,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           ...session.user,
           id: token.userId ?? '',
           accessToken: token.accessToken ?? '',
-          provider: token.provider ?? '',
         },
         error: token.error,
       };
@@ -218,7 +167,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async redirect({ url, baseUrl }) {
       if (url === baseUrl || url === `${baseUrl}/`) return `${baseUrl}/dashboard`;
       if (url.startsWith(baseUrl)) return url;
-      // Allow Cognito's logout endpoint through so the browser can reach it
       const tokenEndpoint = process.env.AUTH_COGNITO_TOKEN_ENDPOINT ?? '';
       const cognitoDomain = tokenEndpoint.replace('/oauth2/token', '');
       if (cognitoDomain && url.startsWith(cognitoDomain)) return url;
@@ -226,13 +174,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
 
-  // ── Events ───────────────────────────────────────────────────────────────
   events: {
-    async signOut() {
-      // Server-side hook — runs whenever a session is terminated.
-      // The actual redirect to Cognito's logout endpoint must be triggered
-      // client-side via getCognitoLogoutUrl() because a server event cannot
-      // redirect the browser.
-    },
+    async signOut() {},
   },
 });

@@ -7,25 +7,20 @@
 
 import express from 'express';
 import { corsMiddleware } from './middleware/cors';
-import { login, oauthSync, refresh } from './handlers/auth';
+import { login } from './handlers/auth';
 import { today, article } from './handlers/news';
 import { chat, audio } from './handlers/agent';
 import { handler as mcpHandler } from './handlers/mcp';
 
 const app = express();
 
-// Parse JSON bodies
 app.use(express.json({ limit: '1mb' }));
-
-// CORS
 app.use(corsMiddleware);
 
-// Auth routes (no authGuard on login/oauth-sync — they are public)
+// Auth routes
 app.post('/auth/login', login);
-app.post('/auth/oauth-sync', oauthSync);
-app.post('/auth/refresh', ...refresh);
 
-// News routes (protected — authGuard is applied inside the handler arrays)
+// News routes (protected)
 app.get('/news/today', ...today);
 app.get('/news/:id', ...article);
 
@@ -44,9 +39,6 @@ app.get('/health', (_req, res) => {
 
 const PORT = process.env.PORT ?? 4000;
 
-// Start the Express server when running directly with tsx (local dev).
-// AWS_LAMBDA_FUNCTION_NAME is set by both real Lambda and serverless-offline,
-// so its absence means we are in a direct-run context.
 if (!process.env.AWS_LAMBDA_FUNCTION_NAME) {
   app.listen(PORT, () => {
     console.log(`[api] Local dev server running at http://localhost:${PORT}`);
@@ -55,6 +47,5 @@ if (!process.env.AWS_LAMBDA_FUNCTION_NAME) {
 
 export { app };
 
-// Lambda entry point — wraps the Express app for API Gateway / serverless-offline
 import serverlessHttp from 'serverless-http';
 export const handler = serverlessHttp(app);
