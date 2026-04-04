@@ -9,7 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import { ChatWindow } from '@/components/agent/ChatWindow';
 import { ChatInput } from '@/components/agent/ChatInput';
 import { Snackbar, useSnackbar } from '@/components/ui/Snackbar';
-import { ConversationSidebar } from '@/components/agent/ConversationSidebar';
+import { ConversationAppBar } from '@/components/agent/ConversationAppBar';
 import { apiClient } from '@/lib/api-client';
 
 const SUGGESTED_PROMPTS = [
@@ -18,21 +18,6 @@ const SUGGESTED_PROMPTS = [
   'What happened in the National Assembly this week?',
   'Give me a brief on Panama Canal news',
 ];
-
-function loadFromSession(key: string): UIMessage[] {
-  try {
-    const raw = sessionStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as UIMessage[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveToSession(key: string, messages: UIMessage[]) {
-  try {
-    sessionStorage.setItem(key, JSON.stringify(messages));
-  } catch {}
-}
 
 export default function AgentPage() {
   const { session, status: authStatus } = useAuth();
@@ -56,8 +41,6 @@ export default function AgentPage() {
   const autoSentRef = useRef(false);
   const prevStatusRef = useRef<string>('');
 
-  const storageKey = `chat_${urlConversationId ?? articleId ?? 'general'}`;
-
   const sessionRef = useRef(session);
   sessionRef.current = session;
 
@@ -70,20 +53,18 @@ export default function AgentPage() {
   // Custom fetch: injects the active conversationId into every request body and
   // captures the X-Conversation-Id header from the response.
   const customFetch = useCallback<typeof fetch>(async (input, init) => {
-    // Inject conversationId into the request body if we have one
     if (activeConversationIdRef.current && init?.body) {
       try {
         const existing = JSON.parse(init.body as string) as Record<string, unknown>;
         const enhanced = { ...existing, conversationId: activeConversationIdRef.current };
         init = { ...init, body: JSON.stringify(enhanced) };
       } catch {
-        // If body parsing fails, proceed without modification
+        // proceed without modification if body parsing fails
       }
     }
 
     const response = await fetch(input as RequestInfo, init as RequestInit);
 
-    // Capture the conversation ID from the response header (set by the backend)
     const cid = response.headers.get('x-conversation-id');
     if (cid) pendingConversationIdRef.current = cid;
 
@@ -117,61 +98,55 @@ export default function AgentPage() {
       pendingConversationIdRef.current = null;
 
       if (!activeConversationIdRef.current) {
-        // First conversation — update URL and trigger sidebar refresh
         setActiveConversationId(cid);
         activeConversationIdRef.current = cid;
         window.history.replaceState({}, '', `/agent?conversationId=${cid}`);
         setSidebarRefreshSignal((n) => n + 1);
       } else {
-        // Subsequent messages on existing conversation — just refresh sidebar
         setSidebarRefreshSignal((n) => n + 1);
       }
     }
   }, [status, isStreaming]);
 
-  // Load from sessionStorage or fetch from API on mount
+  // On mount: auto-send for article context (runs once, auth not required)
   useEffect(() => {
     if (autoSentRef.current) return;
     autoSentRef.current = true;
 
     if (articleId) {
-      // Always start fresh when arriving from an article card
-      sessionStorage.removeItem(storageKey);
       const label = articleTitle ?? articleId;
       void sendMessage({ text: `Please summarize this article for me: "${label}"` });
-    } else if (urlConversationId) {
-      // Load a historical conversation — restore messages without sending them
-      if (authStatus === 'authenticated') {
-        apiClient.conversations
-          .getDetail(urlConversationId, token)
-          .then((detail) => {
-            setMessages(detail.messages as UIMessage[]);
-          })
-          .catch(() => {
-            // Fall back to session storage if API fails
-            const stored = loadFromSession(storageKey);
-            if (stored.length > 0) setMessages(stored);
-          });
-      }
-    } else {
-      const stored = loadFromSession(storageKey);
-      if (stored.length > 0) setMessages(stored);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Persist non-system messages to sessionStorage whenever the conversation changes
+  // Load a historical conversation from the DB once auth resolves.
+  // Kept separate from the mount effect so it retries when authStatus changes
+  // from 'loading' → 'authenticated' (e.g. on page reload).
+  const conversationLoadedRef = useRef(false);
   useEffect(() => {
-    const toSave = messages.filter((m) => m.role !== 'system');
-    if (toSave.length > 0) saveToSession(storageKey, toSave);
-  }, [messages, storageKey]);
+    if (!urlConversationId || conversationLoadedRef.current) return;
+    if (authStatus === 'loading') return;
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!inputValue.trim() || isStreaming) return;
-    const text = inputValue.trim();
+    conversationLoadedRef.current = true;
+
+    if (authStatus === 'authenticated') {
+      apiClient.conversations
+        .getDetail(urlConversationId, token)
+        .then((detail) => setMessages(detail.messages as UIMessage[]))
+        .catch(() => {
+          // conversation not found or access denied — start fresh
+        });
+    }
+  }, [authStatus, urlConversationId, token, setMessages]);
+
+  function handleNewConversation() {
+    setMessages([]);
+    setActiveConversationId(null);
+    activeConversationIdRef.current = null;
+    pendingConversationIdRef.current = null;
     setInputValue('');
-    await sendMessage({ text });
+    window.history.replaceState({}, '', '/agent');
   }
 
   function handleConversationSelect(conversationId: string, loadedMessages: UIMessage[]) {
@@ -185,20 +160,20 @@ export default function AgentPage() {
   const showSuggestions = visibleMessages.length === 0 && !isStreaming;
 
   return (
-    <div className="relative flex h-[calc(100vh-3.5rem)]">
-      {/* Conversation history sidebar */}
-      <ConversationSidebar
-        key={sidebarRefreshSignal}
+    <div className="flex h-[calc(100vh-3.5rem)] overflow-hidden">
+      {/* Left app bar */}
+      <ConversationAppBar
         token={token}
         activeConversationId={activeConversationId}
+        refreshSignal={sidebarRefreshSignal}
         onSelect={handleConversationSelect}
+        onNewConversation={handleNewConversation}
       />
 
       {/* Chat area */}
-      <div className="mx-auto flex h-full w-full max-w-3xl flex-col px-4 sm:px-6">
-        {snackbar && (
-          <Snackbar message={snackbar.message} onClose={dismiss} />
-        )}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="mx-auto flex h-full w-full max-w-3xl flex-col px-4 sm:px-6">
+        {snackbar && <Snackbar message={snackbar.message} onClose={dismiss} />}
 
         <div className="flex-1 overflow-y-auto">
           {showSuggestions ? (
@@ -238,7 +213,16 @@ export default function AgentPage() {
             AI may make mistakes. Always verify important news with original sources.
           </p>
         </div>
+        </div>
       </div>
     </div>
   );
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!inputValue.trim() || isStreaming) return;
+    const text = inputValue.trim();
+    setInputValue('');
+    await sendMessage({ text });
+  }
 }

@@ -16,17 +16,17 @@ export async function getAudioCache(articleId: string): Promise<string | null> {
   const { Item } = await dynamo.send(
     new GetCommand({ TableName: TABLE, Key: { articleId } })
   );
-  return (Item?.audioUrl as string) ?? null;
+  return (Item?.s3Key as string) ?? null;
 }
 
-export async function setAudioCache(articleId: string, audioUrl: string): Promise<void> {
+export async function setAudioCache(articleId: string, s3Key: string): Promise<void> {
   const ttl = Math.floor(Date.now() / 1000) + TTL_SECONDS;
   await dynamo.send(
     new PutCommand({
       TableName: TABLE,
       Item: {
         articleId,
-        audioUrl,
+        s3Key,
         generatedAt: new Date().toISOString(),
         ttl,
       },

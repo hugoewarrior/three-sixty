@@ -31,16 +31,13 @@ export const chat = [
       return;
     }
 
-    console.log(`[agent/chat][${reqId}] START user=${req.user?.email} messages=${messages.length} articleId=${articleId ?? 'none'} conversationId=${conversationId ?? 'new'}`);
+    // Pre-generate the conversation ID so it can be set as a response header before
+    // pipeUIMessageStreamToResponse begins writing (headers must be set before the
+    // first byte is flushed). This mirrors the approach in agent-stream.ts.
+    const outgoingConversationId = conversationId ?? randomUUID();
+    res.setHeader('X-Conversation-Id', outgoingConversationId);
 
-    // For existing conversations, echo the ID back in the response header so the
-    // frontend can track it. For new conversations in Express/local dev, the header
-    // cannot be set after pipeUIMessageStreamToResponse flushes headers — the
-    // frontend will receive the ID on the first request that includes it in the body.
-    // NOTE: Production uses agent-stream.ts where pre-generation works correctly.
-    if (conversationId) {
-      res.setHeader('X-Conversation-Id', conversationId);
-    }
+    console.log(`[agent/chat][${reqId}] START user=${req.user?.email} messages=${messages.length} articleId=${articleId ?? 'none'} conversationId=${outgoingConversationId}`);
 
     try {
       const coreMessages = await convertToModelMessages(messages);
@@ -80,14 +77,11 @@ export const chat = [
               const userEmail = req.user!.email;
 
               if (conversationId) {
-                await updateConversation(conversationId, userId, fullMessages);
+                await updateConversation(outgoingConversationId, userId, fullMessages);
               } else {
-                const record = await createConversation(userId, userEmail, fullMessages);
-                console.log(`[agent/chat][${reqId}] new conversation created conversationId=${record.conversationId}`);
-                // The new conversationId cannot be sent as a header here since
-                // headers are already flushed. The Lambda handler (agent-stream.ts)
-                // handles this correctly by pre-generating the ID before streaming.
+                await createConversation(userId, userEmail, fullMessages, outgoingConversationId);
               }
+              console.log(`[agent/chat][${reqId}] conversation saved conversationId=${outgoingConversationId}`);
             } catch (err) {
               console.error(`[agent/chat][${reqId}] conversation save error`, err);
             }

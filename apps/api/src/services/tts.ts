@@ -36,9 +36,13 @@ export async function synthesizeSpeech(
   articleId: string
 ): Promise<string> {
   // Check DynamoDB cache before calling Polly
-  const cached = await getAudioCache(articleId);
-  if (cached) {
-    return cached;
+  const cachedKey = await getAudioCache(articleId);
+  if (cachedKey) {
+    const getCommand = new GetObjectCommand({
+      Bucket: AUDIO_BUCKET_NAME,
+      Key: cachedKey,
+    });
+    return getSignedUrl(s3Client, getCommand, { expiresIn: 3600 });
   }
 
   const voiceId = (process.env.POLLY_VOICE_ID ?? 'Lupe') as VoiceId;
@@ -85,8 +89,8 @@ export async function synthesizeSpeech(
     expiresIn: 3600,
   });
 
-  // Cache in DynamoDB for 7 days
-  await setAudioCache(articleId, signedUrl);
+  // Cache the S3 key in DynamoDB for 7 days (not the pre-signed URL, which expires in 1 hour)
+  await setAudioCache(articleId, s3Key);
 
   return signedUrl;
 }

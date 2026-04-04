@@ -51,6 +51,11 @@ function isAudioUrl(href: string): boolean {
 
 function markdownComponents(): Components {
   return {
+    // Render paragraphs as <span> blocks to avoid invalid <div>-inside-<p> nesting
+    // when the AudioPlayer (which uses inline-flex <span>) appears inside list items.
+    p({ children }) {
+      return <span className="mb-2 block last:mb-0">{children}</span>;
+    },
     a({ href, children }) {
       if (href && isAudioUrl(href)) {
         return <AudioPlayer audioUrl={href} />;

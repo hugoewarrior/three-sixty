@@ -41,7 +41,8 @@ export function AudioPlayer({ audioUrl }: { audioUrl: string }) {
   }
 
   return (
-    <div className="flex items-center gap-2 rounded-xl bg-gray-900 px-3 py-2 ring-1 ring-gray-700">
+    // Uses inline-flex so this component is valid inside <p> rendered by react-markdown
+    <span className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-3 py-2 ring-1 ring-gray-700">
       <audio ref={audioRef} src={audioUrl} preload="metadata" />
       <button
         onClick={toggle}
@@ -58,15 +59,15 @@ export function AudioPlayer({ audioUrl }: { audioUrl: string }) {
           </svg>
         )}
       </button>
-      <div className="flex-1">
-        <div className="h-1.5 overflow-hidden rounded-full bg-gray-700">
-          <div
-            className="h-full rounded-full bg-blue-600 transition-all"
+      <span className="inline-flex w-24 items-center">
+        <span className="h-1.5 w-full overflow-hidden rounded-full bg-gray-700">
+          <span
+            className="block h-full rounded-full bg-blue-600 transition-all"
             style={{ width: `${progress}%` }}
           />
-        </div>
-      </div>
+        </span>
+      </span>
       <span className="text-xs text-gray-500">TTS</span>
-    </div>
+    </span>
   );
 }

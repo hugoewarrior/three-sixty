@@ -14,17 +14,22 @@ provider:
   memorySize: 512
   timeout: 29 # API Gateway hard limit — keep at 29 for deploy
   environment:
-    SUPABASE_URL: ${env:SUPABASE_URL}
-    SUPABASE_SERVICE_ROLE_KEY: ${env:SUPABASE_SERVICE_ROLE_KEY}
-    COGNITO_USER_POOL_ID: ${env:COGNITO_USER_POOL_ID}
-    COGNITO_CLIENT_ID: ${env:COGNITO_CLIENT_ID}
+    # ── Secrets from AWS Secrets Manager (dev/three-sixty) ───────────────────
+    # Falls back to ${env:...} for local development (loaded via serverless-dotenv-plugin)
+    SUPABASE_URL: ${env:SUPABASE_URL, '{{resolve:secretsmanager:dev/three-sixty:SecretString:SUPABASE_URL}}'}
+    SUPABASE_SERVICE_ROLE_KEY: ${env:SUPABASE_SERVICE_ROLE_KEY, '{{resolve:secretsmanager:dev/three-sixty:SecretString:SUPABASE_SERVICE_ROLE_KEY}}'}
+    COGNITO_USER_POOL_ID: ${env:COGNITO_USER_POOL_ID, '{{resolve:secretsmanager:dev/three-sixty:SecretString:COGNITO_USER_POOL_ID}}'}
+    COGNITO_CLIENT_ID: ${env:COGNITO_CLIENT_ID, '{{resolve:secretsmanager:dev/three-sixty:SecretString:COGNITO_CLIENT_ID}}'}
+    COGNITO_CLIENT_SECRET: ${env:COGNITO_CLIENT_SECRET, '{{resolve:secretsmanager:dev/three-sixty:SecretString:COGNITO_CLIENT_SECRET}}'}
+    OPENAI_API_KEY: ${env:OPENAI_API_KEY, '{{resolve:secretsmanager:dev/three-sixty:SecretString:OPENAI_API_KEY}}'}
+    BRAVE_SEARCH_API_KEY: ${env:BRAVE_SEARCH_API_KEY, '{{resolve:secretsmanager:dev/three-sixty:SecretString:BRAVE_SEARCH_API_KEY}}'}
+    AUTH_SECRET: ${env:AUTH_SECRET, '{{resolve:secretsmanager:dev/three-sixty:SecretString:AUTH_SECRET}}'}
+    # ── Non-secret config ─────────────────────────────────────────────────────
     ANTHROPIC_API_KEY: ${env:ANTHROPIC_API_KEY}
     APP_REGION: ${env:APP_REGION, 'us-east-1'}
     AUDIO_BUCKET_NAME: ${env:AUDIO_BUCKET_NAME, 'three-sixty-audio'}
     AI_MODEL: ${env:AI_MODEL, 'claude-sonnet-4-5'}
     EMBEDDING_MODEL: ${env:EMBEDDING_MODEL, 'text-embedding-3-small'}
-    OPENAI_API_KEY: ${env:OPENAI_API_KEY}
-    BRAVE_SEARCH_API_KEY: ${env:BRAVE_SEARCH_API_KEY}
     POLLY_VOICE_ID: ${env:POLLY_VOICE_ID, 'Lupe'}
     FRONTEND_URL: ${env:FRONTEND_URL, 'http://localhost:3000'}
     ADMIN_EMAIL: ${env:ADMIN_EMAIL}
@@ -37,10 +42,14 @@ provider:
       statements:
         - Effect: Allow
           Action:
+            - secretsmanager:GetSecretValue
+          Resource: arn:aws:secretsmanager:${env:APP_REGION, 'us-east-1'}:*:secret:dev/three-sixty*
+        - Effect: Allow
+          Action:
             - cognito-idp:AdminGetUser
             - cognito-idp:AdminCreateUser
             - cognito-idp:AdminSetUserPassword
-          Resource: arn:aws:cognito-idp:${env:APP_REGION, 'us-east-1'}:*:userpool/${env:COGNITO_USER_POOL_ID}
+          Resource: arn:aws:cognito-idp:${env:APP_REGION, 'us-east-1'}:*:userpool/${env:COGNITO_USER_POOL_ID, '{{resolve:secretsmanager:dev/three-sixty:SecretString:COGNITO_USER_POOL_ID}}'}
         - Effect: Allow
           Action:
             - polly:SynthesizeSpeech
@@ -93,21 +102,13 @@ functions:
               - Authorization
             allowCredentials: true
 
-    agentChatStream:
-      handler: src/handlers/agent-stream.streamHandler
-      timeout: 300
-      memorySize: 1024
-      url:
-        invokeMode: RESPONSE_STREAM
-        cors:
-          allowedOrigins:
-            - ${env:FRONTEND_URL, 'http://localhost:3000'}
-          allowedHeaders:
-            - content-type
-            - authorization
-          allowedMethods:
-            - POST
-            - OPTIONS
+  agentChatStream:
+    handler: src/handlers/agent-stream.streamHandler
+    timeout: 300
+    memorySize: 1024
+    url:
+      invokeMode: RESPONSE_STREAM
+      cors: true
 
 custom:
   esbuild:
@@ -128,6 +129,22 @@ custom:
 
 resources:
   Resources:
+    # ── Lambda Function URL: public invocation permissions ────────────────────
+    AgentChatStreamFunctionUrlAllowPublicAccess:
+      Type: AWS::Lambda::Permission
+      Properties:
+        Action: lambda:InvokeFunctionUrl
+        FunctionName: !GetAtt AgentChatStreamLambdaFunction.Arn
+        Principal: '*'
+        FunctionUrlAuthType: NONE
+
+    AgentChatStreamFunctionUrlInvokePublicAccess:
+      Type: AWS::Lambda::Permission
+      Properties:
+        Action: lambda:InvokeFunction
+        FunctionName: !GetAtt AgentChatStreamLambdaFunction.Arn
+        Principal: '*'
+
     # ── S3: Audio bucket ──────────────────────────────────────────────────────
     AudioBucket:
       Type: AWS::S3::Bucket
