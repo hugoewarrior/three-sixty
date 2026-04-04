@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback, type FormEvent } from 'react';
+import { Suspense, useState, useRef, useEffect, useCallback, type FormEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
@@ -20,6 +20,14 @@ const SUGGESTED_PROMPTS = [
 ];
 
 export default function AgentPage() {
+  return (
+    <Suspense fallback={null}>
+      <AgentPageContent />
+    </Suspense>
+  );
+}
+
+function AgentPageContent() {
   const { session, status: authStatus } = useAuth();
   const searchParams = useSearchParams();
   const articleId = searchParams.get('articleId');

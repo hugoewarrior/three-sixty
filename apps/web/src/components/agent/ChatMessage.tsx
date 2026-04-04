@@ -1,4 +1,4 @@
-import type { UIMessage, ToolInvocationUIPart } from 'ai';
+import type { UIMessage, DynamicToolUIPart } from 'ai';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { Components } from 'react-markdown';
@@ -15,12 +15,12 @@ function getTextContent(message: UIMessage): string {
 function getAudioUrl(message: UIMessage): string | undefined {
   for (const part of message.parts) {
     if (
-      part.type === 'tool-invocation' &&
-      (part as ToolInvocationUIPart).toolInvocation.toolName === 'generate_audio' &&
-      (part as ToolInvocationUIPart).toolInvocation.state === 'result'
+      part.type === 'dynamic-tool' &&
+      (part as DynamicToolUIPart).toolName === 'generate_audio' &&
+      (part as DynamicToolUIPart).state === 'output-available'
     ) {
-      const result = (part as ToolInvocationUIPart).toolInvocation.result as { audioUrl?: string };
-      if (result?.audioUrl) return result.audioUrl;
+      const output = (part as DynamicToolUIPart).output as { audioUrl?: string };
+      if (output?.audioUrl) return output.audioUrl;
     }
   }
   return undefined;
@@ -29,12 +29,12 @@ function getAudioUrl(message: UIMessage): string | undefined {
 function getSources(message: UIMessage): string[] {
   for (const part of message.parts) {
     if (
-      part.type === 'tool-invocation' &&
-      (part as ToolInvocationUIPart).toolInvocation.toolName === 'search_news' &&
-      (part as ToolInvocationUIPart).toolInvocation.state === 'result'
+      part.type === 'dynamic-tool' &&
+      (part as DynamicToolUIPart).toolName === 'search_news' &&
+      (part as DynamicToolUIPart).state === 'output-available'
     ) {
-      const result = (part as ToolInvocationUIPart).toolInvocation.result as { sources?: string[] };
-      if (result?.sources) return result.sources;
+      const output = (part as DynamicToolUIPart).output as { sources?: string[] };
+      if (output?.sources) return output.sources;
     }
   }
   return [];
