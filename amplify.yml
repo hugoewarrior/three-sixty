@@ -4,7 +4,9 @@ applications:
       phases:
         preBuild:
           commands:
-            - npm install --legacy-peer-deps
+            - corepack enable
+            - corepack prepare pnpm@latest --activate
+            - pnpm install
         build:
           commands:
             - npx nx build web --prod
