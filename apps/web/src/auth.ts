@@ -32,6 +32,8 @@ declare module 'next-auth/jwt' {
 // ---------------------------------------------------------------------------
 const TOKEN_REFRESH_BUFFER_SECONDS = 60;
 
+console.log(process.env)
+
 export function getCognitoLogoutUrl(logoutUri: string): string {
   const tokenEndpoint = process.env.AUTH_COGNITO_TOKEN_ENDPOINT ?? '';
   const logoutEndpoint = tokenEndpoint.replace('/oauth2/token', '/logout');
@@ -85,7 +87,6 @@ async function refreshAccessToken(token: import('next-auth/jwt').JWT) {
 // ---------------------------------------------------------------------------
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
-  secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET, // Fallback logic
   providers: [
     Cognito({
       clientId: process.env.AUTH_COGNITO_CLIENT_ID,
