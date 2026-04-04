@@ -84,6 +84,7 @@ async function refreshAccessToken(token: import('next-auth/jwt').JWT) {
 // NextAuth config
 // ---------------------------------------------------------------------------
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  trustHost: true,
   providers: [
     Cognito({
       clientId: process.env.AUTH_COGNITO_CLIENT_ID,
