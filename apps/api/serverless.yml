@@ -108,7 +108,12 @@ functions:
     memorySize: 1024
     url:
       invokeMode: RESPONSE_STREAM
-      cors: true
+      cors:
+        origin: '*'
+        headers:
+          - Content-Type
+          - Authorization
+        allowCredentials: false
 
 custom:
   esbuild:

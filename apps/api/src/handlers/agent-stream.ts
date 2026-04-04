@@ -64,10 +64,13 @@ export const streamHandler = awslambda.streamifyResponse(
 
     // ── CORS preflight ──────────────────────────────────────────────────────
     if (event.requestContext?.http?.method === 'OPTIONS') {
-      awslambda.HttpResponseStream.from(responseStream, {
-        statusCode: 200,
+      console.log(`[stream][${reqId}] OPTIONS preflight — responding with CORS headers`);
+      const preflightStream = awslambda.HttpResponseStream.from(responseStream, {
+        statusCode: 204,
         headers: CORS_HEADERS,
-      }).end();
+      });
+      preflightStream.write('');
+      preflightStream.end();
       return;
     }
 
@@ -125,17 +128,6 @@ export const streamHandler = awslambda.streamifyResponse(
     // written, so we generate the ID here and create/update the record in onFinish.
     const outgoingConversationId = conversationId ?? randomUUID();
 
-    // ── Open the streaming HTTP response ────────────────────────────────────
-    const httpStream = awslambda.HttpResponseStream.from(responseStream, {
-      statusCode: 200,
-      headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'x-vercel-ai-data-stream': 'v1',
-        'X-Conversation-Id': outgoingConversationId,
-        ...CORS_HEADERS,
-      },
-    });
-
     try {
       const coreMessages = await convertToModelMessages(messages);
 
@@ -183,11 +175,32 @@ export const streamHandler = awslambda.streamifyResponse(
         },
       });
 
-      await result.pipeUIMessageStreamToResponse(httpStream as unknown as ServerResponse);
+      // Defer HttpResponseStream.from until pipeUIMessageStreamToResponse calls
+      // writeHead — that way AI SDK headers and CORS headers are committed together
+      // in a single Lambda streaming metadata block.
+      let httpStream: LambdaStream | null = null;
+      const serverResponseShim = {
+        writeHead: (_status: number, _statusText?: unknown, aiHeaders?: Record<string, string>) => {
+          httpStream = awslambda.HttpResponseStream.from(responseStream, {
+            statusCode: 200,
+            headers: {
+              ...(aiHeaders ?? {}),
+              'X-Conversation-Id': outgoingConversationId,
+              // Function URL CORS config already sets Access-Control-Allow-Origin.
+              // Only expose the custom response header the CORS config doesn't cover.
+              'Access-Control-Expose-Headers': 'X-Conversation-Id',
+            },
+          });
+          return serverResponseShim;
+        },
+        write: (chunk: unknown) => { httpStream?.write(chunk); return true; },
+        end: (chunk?: unknown) => { if (chunk) httpStream?.write(chunk); httpStream?.end(); },
+      };
+
+      await result.pipeUIMessageStreamToResponse(serverResponseShim as unknown as ServerResponse);
     } catch (error) {
       console.error(`[stream][${reqId}] ERROR`, error);
-      httpStream.write('\n');
-      httpStream.end();
+      sendError(responseStream, 500, 'Internal server error');
     }
   }
 );
